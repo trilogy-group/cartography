@@ -5,8 +5,9 @@ import botocore.exceptions
 
 from . import dynamodb
 from . import ec2
-from . import ecr
+from . import ecr 
 from . import eks
+from . import elastic_cache
 from . import elasticsearch
 from . import iam
 from . import lambda_function
@@ -17,6 +18,7 @@ from . import redshift
 from . import resourcegroupstaggingapi
 from . import route53
 from . import s3
+from . import sns
 from cartography.util import run_analysis_job
 from cartography.util import run_cleanup_job
 from cartography.util import timeit
@@ -45,6 +47,8 @@ def _sync_one_account(neo4j_session, boto3_session, account_id, sync_tag, common
     ec2.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     ecr.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     eks.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
+    elastic_cache.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
+    sns.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     lambda_function.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     rds.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     redshift.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)

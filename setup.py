@@ -40,7 +40,8 @@ setup(
         "pyyaml>=5.3.1",
         "requests>=2.22.0",
         "statsd",
-        "packaging",
+         "packaging",
+        "kubernetes>=11.0.0"
     ],
     extras_require={
         ':python_version<"3.7"': [

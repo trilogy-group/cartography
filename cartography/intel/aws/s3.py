@@ -46,16 +46,23 @@ def get_s3_bucket_details(boto3_session, bucket_data):
     s3_regional_clients = {}
 
     for bucket in bucket_data['Buckets']:
-        # Note: bucket['Region'] is sometimes None because
+        try:
+            # Note: bucket['Region'] is sometimes None because
         # client.get_bucket_location() does not return a location constraint for buckets
         # in us-east-1 region
         client = s3_regional_clients.get(bucket['Region'])
         if not client:
             client = boto3_session.client('s3', bucket['Region'])
             s3_regional_clients[bucket['Region']] = client
-        acl = get_acl(bucket, client)
-        policy = get_policy(bucket, client)
-        yield bucket['Name'], acl, policy
+            acl = get_acl(bucket, client)
+            policy = get_policy(bucket, client)
+        except Exception as e:
+            if e.__class__.__name__ == "NoSuchBucket":
+                continue
+            else:
+                raise e
+        else:
+            yield bucket['Name'], acl, policy
 
 
 @timeit

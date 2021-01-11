@@ -19,9 +19,13 @@ def get_ec2_instances(boto3_session, region):
         reservations.extend(page['Reservations'])
     return reservations
 
+def _get_ec2_instance_image(boto3_session, region, image_id):
+    client = boto3_session.client('ec2', region_name=region, config=get_botocore_config())
+    response = client.describe_images(ImageIds=[image_id])
+    return response.get("Images")[0] if response.get("Images") else {} # return first and only image
 
 @timeit
-def load_ec2_instance_network_interfaces(neo4j_session, instance_data, aws_update_tag):
+def load_ec2_instance_network_interfaces(neo4j_session, instance_data, region, aws_update_tag):
     ingest_interfaces = """
     MATCH (instance:EC2Instance{instanceid: {InstanceId}})
     UNWIND {Interfaces} as interface
@@ -31,7 +35,13 @@ def load_ec2_instance_network_interfaces(neo4j_session, instance_data, aws_updat
         nic.mac_address = interface.MacAddress,
         nic.description = interface.Description,
         nic.private_dns_name = interface.PrivateDnsName,
+        nic.public_dns_name = interface.PublicDnsName,
+        nic.private_dns_name = interface.PrivateDnsName,
+        nic.public_ip_address = interface.PublicIpAddress,
         nic.private_ip_address = interface.PrivateIpAddress,
+        nic.vpc_id = interface.VpcId,
+        nic.instanceid = {InstanceId},
+        nic.region = {Region},
         nic.lastupdated = {aws_update_tag}
 
         MERGE (instance)-[r:NETWORK_INTERFACE]->(nic)
@@ -59,6 +69,7 @@ def load_ec2_instance_network_interfaces(neo4j_session, instance_data, aws_updat
     neo4j_session.run(
         ingest_interfaces,
         Interfaces=instance_data['NetworkInterfaces'],
+        Region=region,
         InstanceId=instance_id,
         aws_update_tag=aws_update_tag,
     ).consume()  # TODO see issue 170
@@ -85,6 +96,8 @@ def load_ec2_instances(neo4j_session, data, region, current_aws_account_id, aws_
     instance.privateipaddress = {PrivateIpAddress}, instance.publicipaddress = {PublicIpAddress},
     instance.imageid = {ImageId}, instance.instancetype = {InstanceType}, instance.monitoringstate = {MonitoringState},
     instance.state = {State}, instance.launchtime = {LaunchTime}, instance.launchtimeunix = {LaunchTimeUnix},
+    instance.architecture = {Architecture}, instance.hypervisor = {Hypervisor}, instance.OS = {PlatformDetails}, instance.Platform = {Platform},
+    instance.tenancy = {Tenancy}, instance.virtualizationtype = {VirtualizationType},
     instance.region = {Region}, instance.lastupdated = {aws_update_tag},
     instance.iaminstanceprofile = {IamInstanceProfile}
     WITH instance
@@ -177,7 +190,13 @@ def load_ec2_instances(neo4j_session, data, region, current_aws_account_id, aws_
                 PrivateIpAddress=instance.get("PrivateIpAddress"),
                 ImageId=instance.get("ImageId"),
                 InstanceType=instance.get("InstanceType"),
+                PlatformDetails=instance.get("Image", {}).get("PlatformDetails"),
                 IamInstanceProfile=instance.get("IamInstanceProfile", {}).get("Arn"),
+                Architecture=instance.get("Architecture"),
+                Hypervisor=instance.get("Hypervisor"),
+                Platform=instance.get("Platform"),
+                Tenancy=instance.get("Placement", {}).get("Tenancy"),
+                VirtualizationType=instance.get("VirtualizationType"),
                 ReservationId=reservation_id,
                 MonitoringState=monitoring_state,
                 LaunchTime=str(launch_time),
@@ -224,7 +243,16 @@ def load_ec2_instances(neo4j_session, data, region, current_aws_account_id, aws_
                         aws_update_tag=aws_update_tag,
                     ).consume()  # TODO see issue 170
 
-            load_ec2_instance_network_interfaces(neo4j_session, instance, aws_update_tag)
+            load_ec2_instance_network_interfaces(neo4j_session, instance, region, aws_update_tag)
+
+
+def transform_ec2_instances(boto3_session, region, data):
+    for reservation in data:
+        for instance in reservation["Instances"]:
+            image_id = instance.get("ImageId")
+            if image_id:
+               instance["Image"] = _get_ec2_instance_image(boto3_session, region, image_id)
+
 
 
 @timeit
@@ -240,5 +268,6 @@ def sync_ec2_instances(
     for region in regions:
         logger.info("Syncing EC2 instances for region '%s' in account '%s'.", region, current_aws_account_id)
         data = get_ec2_instances(boto3_session, region)
+        transform_ec2_instances(boto3_session, region, data)
         load_ec2_instances(neo4j_session, data, region, current_aws_account_id, aws_update_tag)
     cleanup_ec2_instances(neo4j_session, common_job_parameters)

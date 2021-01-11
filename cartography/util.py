@@ -2,6 +2,10 @@ import logging
 import sys
 
 import botocore
+import base64
+import boto3
+import re
+from botocore.signers import RequestSigner
 
 from cartography.graph.job import GraphJob
 
@@ -85,3 +89,56 @@ def aws_handle_regions(func):
             else:
                 raise
     return inner_function
+
+
+class EKSAuth(object): 
+    def __init__(self, cluster_id, region='us-east-1'):
+        self.cluster_id = cluster_id
+        self.region = region
+        self.METHOD = 'GET'
+        self.EXPIRES = 60
+        self.EKS_HEADER = 'x-k8s-aws-id'
+        self.EKS_PREFIX = 'k8s-aws-v1.'
+        self.STS_URL = f'sts.{self.region}.amazonaws.com'
+        self.STS_ACTION = 'Action=GetCallerIdentity&Version=2011-06-15'
+    
+    def get_token(self):
+        """
+        Return bearer token
+        """
+        session = boto3.session.Session(region_name=self.region)
+        #Get ServiceID required by class RequestSigner
+        client = session.client("sts",region_name=self.region)
+        service_id = client.meta.service_model.service_id
+
+        signer = RequestSigner(
+            service_id,
+            session.region_name,
+            'sts',
+            'v4',
+            session.get_credentials(),
+            session.events
+        )
+
+        params = {
+            'method': self.METHOD,
+            'url': 'https://' + self.STS_URL + '/?' + self.STS_ACTION,
+            'body': {},
+            'headers': {
+                self.EKS_HEADER: self.cluster_id
+            },
+            'context': {}
+        }
+
+        signed_url = signer.generate_presigned_url(
+            params,
+            region_name=session.region_name,
+            expires_in=self.EXPIRES,
+            operation_name=''
+        )
+
+        base64_url =  base64.urlsafe_b64encode(
+                signed_url.encode('utf-8')
+            ).decode('utf-8')
+
+        return self.EKS_PREFIX  + re.sub(r'=*', '', base64_url)

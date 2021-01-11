@@ -52,7 +52,7 @@ def load_lambda_functions(neo4j_session, data, region, current_aws_account_id, a
             ingest_lambda_functions,
             LambdaName=lambda_function["FunctionName"],
             Arn=lambda_function["FunctionArn"],
-            Runtime=lambda_function["Runtime"],
+            Runtime=lambda_function.get("Runtime"),
             Role=lambda_function["Role"],
             Description=lambda_function["Description"],
             Timeout=lambda_function["Timeout"],
