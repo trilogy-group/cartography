@@ -113,6 +113,11 @@ def load_ec2_vpcs(neo4j_session, data, region, current_aws_account_id, aws_updat
     MATCH (awsAccount:AWSAccount{id: {AWS_ACCOUNT_ID}})
     MERGE (awsAccount)-[r:RESOURCE]->(new_vpc)
     ON CREATE SET r.firstseen = timestamp()
+    SET r.lastupdated = {aws_update_tag}
+    WITH new_vpc
+    MATCH (dhcpOptions:DHCPOptions{id: {DhcpOptionsId}})
+    MERGE (dhcpOptions)<-[r:DHCP_ASSOCIATION]-(new_vpc)
+    ON CREATE SET r.firstseen = timestamp()
     SET r.lastupdated = {aws_update_tag}"""
 
     for vpc in data:
