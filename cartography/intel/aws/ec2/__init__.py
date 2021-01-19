@@ -1,6 +1,7 @@
 import logging
 
 from .auto_scaling_groups import sync_ec2_auto_scaling_groups
+from .dhcp_options import sync_dhcp_options
 from .instances import sync_ec2_instances
 from .key_pairs import sync_ec2_key_pairs
 from .load_balancer_v2s import sync_load_balancer_v2s
@@ -26,6 +27,7 @@ def get_ec2_regions(boto3_session):
 @timeit
 def sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters):
     logger.info("Syncing EC2 for account '%s'.", account_id)
+    sync_dhcp_options(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_vpc(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_ec2_security_groupinfo(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_ec2_key_pairs(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
