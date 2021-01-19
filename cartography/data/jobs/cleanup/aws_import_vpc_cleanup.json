@@ -18,6 +18,11 @@
     "query": "MATCH (:AWSVpc)<-[r:RESOURCE]-(:AWSAccount{id: {AWS_ID}}) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
     "iterative": true,
     "iterationsize": 100
+  },
+  {
+    "query": "MATCH (:DHCPOptions)<-[r:DHCP_ASSOCIATION]-(:AWSVpc)<-[:RESOURCE]-(:AWSAccount{id: {AWS_ID}}) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
+      "iterative": true,
+      "iterationsize": 100
   }],
   "name": "cleanup AWS VPC information"
 }
