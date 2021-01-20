@@ -1,5 +1,5 @@
 import logging
-
+import os 
 import boto3
 import botocore.exceptions
 
@@ -7,6 +7,7 @@ from . import dynamodb
 from . import ec2
 from . import ecr 
 from . import eks
+from . import eks_mod
 from . import elastic_cache
 from . import elasticsearch
 from . import iam
@@ -24,7 +25,7 @@ from cartography.util import run_cleanup_job
 from cartography.util import timeit
 
 logger = logging.getLogger(__name__)
-
+RUN_EKS_MOD = os.getenv("RUN_EKS_MOD", False) in (True, "True", "true")
 
 def _sync_one_account(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters):
     iam.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
@@ -47,6 +48,7 @@ def _sync_one_account(neo4j_session, boto3_session, account_id, sync_tag, common
     ec2.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     ecr.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     eks.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
+    if (RUN_EKS_MOD): eks_mod.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     elastic_cache.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sns.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     lambda_function.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
