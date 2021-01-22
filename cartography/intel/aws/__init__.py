@@ -30,7 +30,6 @@ RUN_EKS_MOD = os.getenv("RUN_EKS_MOD", False) in (True, "True", "true")
 def _sync_one_account(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters):
     iam.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
     s3.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
-
     try:
         regions = ec2.get_ec2_regions(boto3_session)
     except botocore.exceptions.ClientError as e:
