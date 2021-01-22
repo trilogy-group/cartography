@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 RUN_EKS_MOD = os.getenv("RUN_EKS_MOD", False) in (True, "True", "true")
 
 def _sync_one_account(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters):
+    iam.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
+    s3.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
 
     try:
         regions = ec2.get_ec2_regions(boto3_session)
@@ -44,9 +46,6 @@ def _sync_one_account(neo4j_session, boto3_session, account_id, sync_tag, common
 
     eks.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     if (RUN_EKS_MOD): eks_mod.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
-    iam.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
-    s3.sync(neo4j_session, boto3_session, account_id, sync_tag, common_job_parameters)
-
     dynamodb.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     ec2.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     ecr.sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
