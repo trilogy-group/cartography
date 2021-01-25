@@ -17,6 +17,15 @@ def get_short_id_from_ec2_arn(arn):
     """
     return arn.split('/')[-1]
 
+def get_short_id_from_sns_arn(arn):
+    """
+    Return the short-form resource ID from an SNS ARN.
+    For example, for "arn:aws:sns:us-east-1:111111111111:some-topic", return 'some-topic'.
+    :param arn: The ARN
+    :return: The resource ID
+    """
+    return arn.split(':')[-1]
+
 
 def get_bucket_name_from_arn(bucket_arn):
     """
@@ -36,8 +45,12 @@ def get_bucket_name_from_arn(bucket_arn):
 # cartography uses.
 # TODO - we should make EC2 and S3 assets query-able by their full ARN so that we don't need this workaround.
 TAG_RESOURCE_TYPE_MAPPINGS = {
+    'ec2:dhcp-options': {'label': 'DHCPOptions', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:instance': {'label': 'EC2Instance', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
+    'ec2:internet-gateway': {'label': 'EC2InternetGateway', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
+    'ec2:network-acl': {'label': 'NetworkAcl', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:network-interface': {'label': 'NetworkInterface', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
+    'ec2:route-table': {'label': 'RouteTable', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:security-group': {'label': 'EC2SecurityGroup', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:subnet': {'label': 'EC2Subnet', 'property': 'subnetid', 'id_func': get_short_id_from_ec2_arn},
     'ec2:vpc': {'label': 'AWSVpc', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
@@ -49,6 +62,7 @@ TAG_RESOURCE_TYPE_MAPPINGS = {
     'rds:subgrp': {'label': 'DBSubnetGroup', 'property': 'id'},
     # Buckets are the only objects in the S3 service: https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-arn-format.html
     's3': {'label': 'S3Bucket', 'property': 'id', 'id_func': get_bucket_name_from_arn},
+    'sns': {'label': 'SNSTopic', 'property': 'id', 'id_func': get_short_id_from_sns_arn}
 }
 
 
