@@ -20,6 +20,59 @@ def get_subnet_data(boto3_session, region):
 
 
 @timeit
+def load_ipv4_cidr_association(neo4j_session, subnets, aws_update_tag):
+    ingest_statement = """
+    UNWIND {Subnets} as subnet_data
+    MATCH (subnet:EC2Subnet{subnetid: subnet_data.SubnetId})
+    MERGE (new_block:AWSCidrBlock:AWSIpv4CidrBlock{id: subnet_data.SubnetId + '|' + subnet_data.CidrBlock})
+    ON CREATE SET new_block.firstseen = timestamp()
+    SET new_block.cidr_block = subnet_data.CidrBlock,
+    new_block.lastupdated = {aws_update_tag}
+    WITH subnet, new_block
+    MERGE (subnet)-[r:BLOCK_ASSOCIATION]->(new_block)
+    ON CREATE SET r.firstseen = timestamp()
+    SET r.lastupdated = {aws_update_tag}
+    """
+    neo4j_session.run(
+        ingest_statement,
+        Subnets=subnets,
+        aws_update_tag=aws_update_tag,
+    )
+
+
+def _get_ipv6_cidr_association_statement():
+    INGEST_IPV6_CIDR_TEMPLATE = """
+    UNWIND {Subnets} as subnet_data
+    UNWIND subnet_data.Ipv6CidrBlockAssociationSet as block_data
+        MATCH (subnet:EC2Subnet{subnetid: subnet_data.SubnetId})
+        MERGE (new_block:AWSCidrBlock:AWSIpv6CidrBlock{id: subnet_data.SubnetId + '|' + block_data.Ipv6CidrBlock})
+        ON CREATE SET new_block.firstseen = timestamp()
+        SET new_block.association_id = block_data.AssociationId,
+        new_block.cidr_block = block_data.Ipv6CidrBlock,
+        new_block.block_state = block_data.Ipv6CidrBlockState.State,
+        new_block.block_state_message = block_data.Ipv6CidrBlockState.StatusMessage,
+        new_block.ipv6_pool = block_data.Ipv6Pool,
+        new_block.network_border_group = block_data.NetworkBorderGroup,
+        new_block.lastupdated = {aws_update_tag}
+        WITH subnet, new_block
+        MERGE (subnet)-[r:BLOCK_ASSOCIATION]->(new_block)
+        ON CREATE SET r.firstseen = timestamp()
+        SET r.lastupdated = {aws_update_tag}
+    """
+    return INGEST_IPV6_CIDR_TEMPLATE
+
+
+@timeit
+def load_ipv6_cidr_association_set(neo4j_session, subnets, aws_update_tag):
+    ingest_statement = _get_ipv6_cidr_association_statement()
+
+    neo4j_session.run(
+        ingest_statement,
+        Subnets=subnets,
+        aws_update_tag=aws_update_tag,
+    )
+
+
 def load_subnets(neo4j_session, data, region, aws_account_id, aws_update_tag):
 
     ingest_subnets = """
@@ -28,8 +81,8 @@ def load_subnets(neo4j_session, data, region, aws_account_id, aws_update_tag):
     ON CREATE SET snet.firstseen = timestamp()
     SET snet.lastupdated = {aws_update_tag}, snet.name = subnet.CidrBlock, snet.cidr_block = subnet.CidrBlock,
     snet.available_ip_address_count = subnet.AvailableIpAddressCount, snet.default_for_az = subnet.DefaultForAz,
-    snet.map_customer_owned_ip_on_launch = subnet.MapCustomerOwnedIpOnLaunch,
-    snet.map_public_ip_on_launch = subnet.MapPublicIpOnLaunch, snet.subnet_arn = subnet.SubnetArn,
+    snet.map_customer_owned_ip_on_launch = subnet.MapCustomerOwnedIpOnLaunch, snet.outpost_arn = subnet.OutpostArn,
+    snet.map_public_ip_on_launch = subnet.MapPublicIpOnLaunch, snet.subnet_arn = subnet.SubnetArn, snet.vpc_id = subnet.VpcId,
     snet.availability_zone = subnet.AvailabilityZone, snet.availability_zone_id = subnet.AvailabilityZoneId,
     snet.subnetid = subnet.SubnetId
     """
@@ -54,6 +107,19 @@ def load_subnets(neo4j_session, data, region, aws_account_id, aws_update_tag):
         ingest_subnets, subnets=data, aws_update_tag=aws_update_tag,
         region=region, aws_account_id=aws_account_id,
     )
+
+    load_ipv4_cidr_association(
+        neo4j_session,
+        subnets=data,
+        aws_update_tag=aws_update_tag,
+    )
+
+    load_ipv6_cidr_association_set(
+        neo4j_session,
+        subnets=data,
+        aws_update_tag=aws_update_tag,
+    )
+
     neo4j_session.run(
         ingest_subnet_vpc_relations, subnets=data, aws_update_tag=aws_update_tag,
         region=region, aws_account_id=aws_account_id,
