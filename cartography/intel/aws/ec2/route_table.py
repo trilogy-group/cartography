@@ -136,7 +136,7 @@ def _get_routes_statement():
         )
 
         WITH new_route
-        OPTIONAL MATCH (igw:EC2InternetGateway{id: new_route.gateway_id})
+        OPTIONAL MATCH (igw:InternetGateway{id: new_route.gateway_id})
         WITH igw, new_route
         FOREACH(ignoreMe IN CASE igw WHEN null THEN [] ELSE [1] END |
             MERGE (new_route)-[r:ROUTE_TARGET]->(igw)
