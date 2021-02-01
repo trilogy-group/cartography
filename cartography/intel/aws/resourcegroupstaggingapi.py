@@ -47,8 +47,10 @@ def get_bucket_name_from_arn(bucket_arn):
 TAG_RESOURCE_TYPE_MAPPINGS = {
     'ec2:dhcp-options': {'label': 'DHCPOptions', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:instance': {'label': 'EC2Instance', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
+    'ec2:internet-gateway': {'label': 'InternetGateway', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:network-acl': {'label': 'NetworkAcl', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:network-interface': {'label': 'NetworkInterface', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
+    'ec2:route-table': {'label': 'RouteTable', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:security-group': {'label': 'EC2SecurityGroup', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},
     'ec2:subnet': {'label': 'EC2Subnet', 'property': 'subnetid', 'id_func': get_short_id_from_ec2_arn},
     'ec2:vpc': {'label': 'AWSVpc', 'property': 'id', 'id_func': get_short_id_from_ec2_arn},

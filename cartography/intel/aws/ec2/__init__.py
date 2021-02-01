@@ -3,6 +3,10 @@ import logging
 from .auto_scaling_groups import sync_ec2_auto_scaling_groups
 from .dhcp_options import sync_dhcp_options
 from .instances import sync_ec2_instances
+from .internet_gateway import sync_internet_gateways
+from .dhcp_options import sync_dhcp_options
+from .network_acl import sync_network_acls
+from .route_table import sync_route_tables
 from .key_pairs import sync_ec2_key_pairs
 from .load_balancer_v2s import sync_load_balancer_v2s
 from .load_balancers import sync_load_balancers
@@ -31,6 +35,7 @@ def sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job
     logger.info("Syncing EC2 for account '%s'.", account_id)
     sync_dhcp_options(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_vpc(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
+    sync_internet_gateways(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_ec2_security_groupinfo(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_ec2_key_pairs(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_ec2_instances(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
@@ -43,3 +48,4 @@ def sync(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job
     sync_vpc_peering(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_transit_gateways(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
     sync_network_interfaces(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)
+    sync_route_tables(neo4j_session, boto3_session, regions, account_id, sync_tag, common_job_parameters)

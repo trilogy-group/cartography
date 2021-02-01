@@ -33,6 +33,7 @@ CREATE INDEX ON :DynamoDBTable(id);
 CREATE INDEX ON :EC2Instance(id);
 CREATE INDEX ON :EC2Instance(instanceid);
 CREATE INDEX ON :EC2Instance(publicdnsname);
+CREATE INDEX ON :InternetGateway(id)
 CREATE INDEX ON :EC2KeyPair(id);
 CREATE INDEX ON :EC2PrivateIp(id);
 CREATE INDEX ON :EC2Reservation(reservationid);
@@ -112,6 +113,8 @@ CREATE INDEX ON :RDSInstance(id);
 CREATE INDEX ON :RDSInstance(arn);
 CREATE INDEX ON :ReplyUri(id)
 CREATE INDEX ON :Risk(id);
+CREATE INDEX ON :Route(id)
+CREATE INDEX ON :RouteTable(id)
 CREATE INDEX ON :S3Acl(id);
 CREATE INDEX ON :S3Bucket(id);
 CREATE INDEX ON :S3Bucket(name);
