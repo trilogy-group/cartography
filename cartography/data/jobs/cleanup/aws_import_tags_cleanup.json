@@ -99,6 +99,46 @@
             "query": "MATCH (:AWSTag)<-[r:TAGGED]-(:S3Bucket) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
             "iterative": true,
             "iterationsize": 100
+        },
+        {
+            "query": "MATCH (n:AWSTag)<-[:TAGGED]-(:DHCPOptions) WHERE n.lastupdated <> {UPDATE_TAG} WITH n LIMIT {LIMIT_SIZE} DETACH DELETE (n) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (:AWSTag)<-[r:TAGGED]-(:DHCPOptions) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (n:AWSTag)<-[:TAGGED]-(:InternetGateway) WHERE n.lastupdated <> {UPDATE_TAG} WITH n LIMIT {LIMIT_SIZE} DETACH DELETE (n) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (:AWSTag)<-[r:TAGGED]-(:InternetGateway) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (n:AWSTag)<-[:TAGGED]-(:NetworkAcl) WHERE n.lastupdated <> {UPDATE_TAG} WITH n LIMIT {LIMIT_SIZE} DETACH DELETE (n) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (:AWSTag)<-[r:TAGGED]-(:NetworkAcl) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (n:AWSTag)<-[:TAGGED]-(:RouteTable) WHERE n.lastupdated <> {UPDATE_TAG} WITH n LIMIT {LIMIT_SIZE} DETACH DELETE (n) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
+        },
+        {
+            "query": "MATCH (:AWSTag)<-[r:TAGGED]-(:RouteTable) WHERE r.lastupdated <> {UPDATE_TAG} WITH r LIMIT {LIMIT_SIZE} DELETE (r) return COUNT(*) as TotalCompleted",
+            "iterative": true,
+            "iterationsize": 100
         }
     ],
     "name": "cleanup AWS Tags"
