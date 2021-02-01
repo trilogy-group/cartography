@@ -20,7 +20,7 @@ def get_route_table_data(boto3_session, region):
 
 
 def _get_implicit_subnet_association_statement():
-    INGEST_IMPLICIT_SUBNET_ASSOCIATIONS_TEMPLATE ="""
+    INGEST_IMPLICIT_SUBNET_ASSOCIATIONS_TEMPLATE = """
     UNWIND {RouteTables} as route_table
     UNWIND route_table.Associations as association
         MATCH (rtable:RouteTable{id: route_table.RouteTableId})
@@ -36,7 +36,7 @@ def _get_implicit_subnet_association_statement():
 
 
 def _get_explicit_subnet_association_statement():
-    INGEST_EXPLICIT_SUBNET_ASSOCIATIONS_TEMPLATE ="""
+    INGEST_EXPLICIT_SUBNET_ASSOCIATIONS_TEMPLATE = """
     UNWIND {RouteTables} as route_table
     UNWIND route_table.Associations as association
         MATCH (rtable:RouteTable{id: route_table.RouteTableId})
@@ -68,7 +68,7 @@ def load_subnet_associations(neo4j_session, route_tables, aws_update_tag):
 
 
 def _get_routes_statement():
-    INGEST_ROUTE_TEMPLATE ="""
+    INGEST_ROUTE_TEMPLATE = """
     UNWIND {RouteTables} as route_table
     UNWIND route_table.Routes as route_data
         MERGE (new_route:Route{id: route_table.RouteTableId + '|' + 
