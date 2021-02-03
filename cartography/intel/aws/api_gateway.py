@@ -17,7 +17,6 @@ def get_apigateway_integration(export_swagger_json):
                 apigateway_integration.append(uri)
     return apigateway_integration
 
-
 @timeit
 @aws_handle_regions
 def get_rest_apis(boto3_session, region):
@@ -40,7 +39,6 @@ def get_rest_apis(boto3_session, region):
             rest_apis.append(item)
     return rest_apis
 
-
 @timeit
 def load_rest_apis(neo4j_session, data, region, current_aws_account_id, aws_update_tag):
     api_gateway_query = """
@@ -50,7 +48,12 @@ def load_rest_apis(neo4j_session, data, region, current_aws_account_id, aws_upda
     ag.description = {Description},
     ag.protocol = 'REST',
     ag.created_date = {CreatedDate},
-    ag.endpointConfiguration = {EndpointConfiguration},
+    ag.endpoint_configuration = {EndpointConfiguration},
+    ag.version = {Version},
+    ag.binary_media_types = {BinaryMediaTypes},
+    ag.api_key_source = {ApiKeySource},
+    ag.policy = {Policy},
+    ag.disable_execute_api_endpoint = {DisableExecuteApiEndpoint},
     ag.lastupdated = {aws_update_tag},
     ag.region = {Region}
     WITH ag
@@ -88,9 +91,14 @@ def load_rest_apis(neo4j_session, data, region, current_aws_account_id, aws_upda
             api_gateway_query,
             Id=api_gateway['id'],
             Name=api_gateway['name'],
-            Description=api_gateway.get('description',''),
+            Description=api_gateway.get('description',None),
             CreatedDate=api_gateway['createdDate'],
-            EndpointConfiguration=str(api_gateway.get('endpointConfiguration','')),
+            EndpointConfiguration=json.dumps(api_gateway.get('endpointConfiguration',None)),
+            Version=api_gateway.get('version',None),
+            BinaryMediaTypes=api_gateway.get('binaryMediaTypes',None),
+            ApiKeySource=api_gateway.get('apiKeySource',None),
+            Policy=api_gateway.get('policy',None),
+            DisableExecuteApiEndpoint=api_gateway.get('disableExecuteApiEndpoint',None),
             Region=region,
             AWS_ACCOUNT_ID=current_aws_account_id,
             aws_update_tag=aws_update_tag,
@@ -102,7 +110,7 @@ def load_rest_apis(neo4j_session, data, region, current_aws_account_id, aws_upda
                 StageName=stage['stageName'],
                 DeploymentId=stage['deploymentId'],
                 Description=stage.get('description',''),
-                export_swagger_json=str(stage['export_swagger_json']),
+                export_swagger_json=json.dumps(stage['export_swagger_json']),
                 CreatedDate=stage['createdDate'],
                 LastUpdatedDate=stage['lastUpdatedDate'],
                 ApiGatewayId=api_gateway['id'],
@@ -110,14 +118,9 @@ def load_rest_apis(neo4j_session, data, region, current_aws_account_id, aws_upda
                 aws_update_tag=aws_update_tag,
             )
 
-
-
 @timeit
 def cleanup_api_gateway(neo4j_session, common_job_parameters):
     run_cleanup_job('aws_import_api_gateway_cleanup.json', neo4j_session, common_job_parameters)
-
-
-
 
 def sync(
             neo4j_session, boto3_session, regions, current_aws_account_id, aws_update_tag,
