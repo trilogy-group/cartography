@@ -129,4 +129,3 @@ def sync(
         load_rest_apis(neo4j_session, data, region, current_aws_account_id, aws_update_tag)
 
     cleanup_api_gateway(neo4j_session, common_job_parameters)
-    
