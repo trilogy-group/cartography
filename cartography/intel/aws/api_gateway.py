@@ -11,7 +11,7 @@ def get_apigateway_integration(export_swagger_json):
     apigateway_integration = []
     for path in export_swagger_json["paths"].keys():
         for path_type in export_swagger_json["paths"][path].keys():
-            if export_swagger_json["paths"][path][path_type]["x-amazon-apigateway-integration"]["type"] == "aws_proxy":
+            if export_swagger_json["paths"][path][path_type]["x-amazon-apigateway-integration"]["type"] in ["aws_proxy", "aws"]:
                 uri = export_swagger_json["paths"][path][path_type]["x-amazon-apigateway-integration"]["uri"]
                 uri = uri.split('/')[-2]
                 apigateway_integration.append(uri)
