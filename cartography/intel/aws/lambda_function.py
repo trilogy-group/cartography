@@ -1,4 +1,5 @@
 import logging
+import json
 
 from cartography.util import aws_handle_regions
 from cartography.util import run_cleanup_job
@@ -48,6 +49,46 @@ def get_lambda_tags(boto3_session, function_arn, region):
     response = client.list_tags(Resource=function_arn)
     return response["Tags"]
 
+
+def get_lambda_label(lambda_version):
+    lambda_label = "AWSLambda"
+    if lambda_version != "$LATEST":
+        lambda_label = "AWSLambdaVersion"
+    return lambda_label
+
+
+def _get_lambda_vpc_subnet_query(lambda_version):
+    ingest_lambda_vpc_subnet = Template("""
+    MATCH (lambda:$lambda_label{id: {Arn}})
+    MATCH (vpc:AWSVpc{id: {VpcId}})
+    MERGE (vpc)<-[r:MEMBER_OF_AWS_VPC]-(lambda)
+    ON CREATE SET r.firstseen = timestamp()
+    SET r.lastupdated = {aws_update_tag}
+
+    WITH lambda
+    UNWIND {SubnetIds} as subnet_id
+        MATCH (subnet:EC2Subnet{subnetid: subnet_id})
+        MERGE (subnet)<-[r:PART_OF_SUBNET]-(lambda)
+        ON CREATE SET r.firstseen = timestamp()
+        SET r.lastupdated = {aws_update_tag}
+    """)
+    lambda_label = get_lambda_label(lambda_version)
+    return ingest_lambda_vpc_subnet.safe_substitute(lambda_label=lambda_label)
+
+
+def _get_lambda_security_group_query(lambda_version):
+    ingest_lambda_security_group = Template("""
+    MATCH (lambda:$lambda_label{id: {Arn}})
+    UNWIND {SecurityGroupIds} as sgp_id
+        MATCH (sgp:EC2SecurityGroup{id: sgp_id})
+        MERGE (sgp)<-[r:MEMBER_OF_EC2_SECURITY_GROUP]-(lambda)
+        ON CREATE SET r.firstseen = timestamp()
+        SET r.lastupdated = {aws_update_tag}
+    """)
+    lambda_label = get_lambda_label(lambda_version)
+    return ingest_lambda_security_group.safe_substitute(lambda_label=lambda_label)
+
+
 def _get_lambda_function_query(lambda_version):
     ingest_lambda_functions = Template("""
     MERGE (lambda:$lambda_label{id: {Arn}})
@@ -71,34 +112,8 @@ def _get_lambda_function_query(lambda_version):
     lambda.dead_letter_config_target_arn = {DeadLetterConfigTargetArn},
     lambda.signing_profile_version_arn = {SigningProfileVersionArn},
     lambda.signing_job_arn = {SigningJobArn},
+    lambda.image_config = {ImageConfig},
     lambda.lastupdated = {aws_update_tag}
-
-    WITH lambda
-    UNWIND {LambdaLayers} as layer
-        MATCH (lv:AWSLambdaLayerVersion{id: layer.Arn})
-        MERGE (lv)-[r:ATTACHED_TO]->(lambda)
-        ON CREATE SET r.firstseen = timestamp()
-        SET r.lastupdated = {aws_update_tag}
-
-    WITH lambda
-    MATCH (vpc:AWSVpc{id: {VpcId}})
-    MERGE (vpc)<-[r:MEMBER_OF_AWS_VPC]-(lambda)
-    ON CREATE SET r.firstseen = timestamp()
-    SET r.lastupdated = {aws_update_tag}
-
-    WITH lambda
-    UNWIND {SubnetIds} as subnet_id
-        MATCH (subnet:EC2Subnet{subnetid: subnet_id})
-        MERGE (subnet)<-[r:PART_OF_SUBNET]-(lambda)
-        ON CREATE SET r.firstseen = timestamp()
-        SET r.lastupdated = {aws_update_tag}
-
-    WITH lambda
-    UNWIND {SecurityGroupIds} as sgp_id
-        MATCH (sgp:EC2SecurityGroup{id: sgp_id})
-        MERGE (sgp)<-[r:MEMBER_OF_EC2_SECURITY_GROUP]-(lambda)
-        ON CREATE SET r.firstseen = timestamp()
-        SET r.lastupdated = {aws_update_tag}
 
     WITH lambda
     MATCH (role:AWSPrincipal{arn: {Role}})
@@ -107,13 +122,53 @@ def _get_lambda_function_query(lambda_version):
     SET r.lastupdated = {aws_update_tag}
     """)
 
-    lambda_label = "AWSLambda"
-    if lambda_version != "$LATEST":
-        lambda_label = "AWSLambdaVersion"
-
+    lambda_label = get_lambda_label(lambda_version)
     return ingest_lambda_functions.safe_substitute(lambda_label=lambda_label)
 
 
+@timeit
+def load_vpc_subnet_security_group_relations(neo4j_session, lambda_function, VpcId, SubnetIds,
+    SecurityGroupIds, aws_update_tag):
+    lambda_version = lambda_function["Version"]
+    ingest_lambda_vpc_subnet = _get_lambda_vpc_subnet_query(lambda_version)
+    ingest_lambda_security_group = _get_lambda_security_group_query(lambda_version)
+
+    neo4j_session.run(ingest_lambda_vpc_subnet,
+        Arn=lambda_function["FunctionArn"],
+        VpcId=VpcId,
+        SubnetIds=SubnetIds,
+        aws_update_tag=aws_update_tag,
+    )
+
+    neo4j_session.run(ingest_lambda_security_group,
+        Arn=lambda_function["FunctionArn"],
+        SecurityGroupIds=SecurityGroupIds,
+        aws_update_tag=aws_update_tag,
+    )
+
+
+@timeit
+def load_lambda_layer_relations(neo4j_session, lambda_function, LambdaLayers, aws_update_tag):
+    ingest_lambda_layers = Template("""
+    MATCH (lambda:$lambda_label{id: {Arn}})
+    UNWIND {LambdaLayers} as layer
+        MATCH (lv:AWSLambdaLayerVersion{id: layer.Arn})
+        MERGE (lv)-[r:ATTACHED_TO]->(lambda)
+        ON CREATE SET r.firstseen = timestamp()
+        SET r.lastupdated = {aws_update_tag}
+    """)
+    lambda_label = get_lambda_label(lambda_function["Version"])
+    ingest_lambda_layers = ingest_lambda_layers.safe_substitute(
+        lambda_label=lambda_label)
+
+    neo4j_session.run(ingest_lambda_layers,
+        Arn=lambda_function["FunctionArn"],
+        LambdaLayers=LambdaLayers,
+        aws_update_tag=aws_update_tag,
+    )
+
+
+@timeit
 def add_lambda_to_graph(neo4j_session, lambda_function, region,
     current_aws_account_id, aws_update_tag):
     ingest_lambda_functions = _get_lambda_function_query(lambda_function["Version"])
@@ -121,6 +176,8 @@ def add_lambda_to_graph(neo4j_session, lambda_function, region,
     vpc_config = lambda_function.get("VpcConfig", {})
     tracing_config = lambda_function.get("TracingConfig", {})
     dead_letter_config = lambda_function.get("DeadLetterConfig", {})
+    image_config_response = lambda_function.get("ImageConfigResponse", {})
+    image_config = image_config_response.get("ImageConfig")
 
     neo4j_session.run(
         ingest_lambda_functions,
@@ -141,16 +198,20 @@ def add_lambda_to_graph(neo4j_session, lambda_function, region,
         DeadLetterConfigTargetArn=dead_letter_config.get("TargetArn"),
         SigningProfileVersionArn=lambda_function.get("SigningProfileVersionArn"),
         SigningJobArn=lambda_function.get("SigningJobArn"),
+        ImageConfig=(json.dumps(image_config) if image_config else None),
         VpcId=vpc_config.get("VpcId"),
-        SubnetIds=vpc_config.get("SubnetIds"),
-        SecurityGroupIds=vpc_config.get("SecurityGroupIds"),
         LastModified=lambda_function["LastModified"],
         Version=lambda_function["Version"],
-        LambdaLayers=lambda_function.get("Layers"),
         Region=region,
         AWS_ACCOUNT_ID=current_aws_account_id,
         aws_update_tag=aws_update_tag,
     )
+
+    load_vpc_subnet_security_group_relations(neo4j_session, lambda_function, vpc_config.get("VpcId"),
+        vpc_config.get("SubnetIds"), vpc_config.get("SecurityGroupIds"), aws_update_tag)
+    
+    load_lambda_layer_relations(neo4j_session, lambda_function, lambda_function.get("Layers"),
+        aws_update_tag)
 
 
 @timeit
