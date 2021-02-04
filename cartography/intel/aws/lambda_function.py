@@ -157,13 +157,7 @@ def load_lambda_tags(boto3_session, neo4j_session, function_arn, region, current
         r.firstseen = timestamp()
     """
     tags = get_lambda_tags(boto3_session, function_arn, region)
-    lambda_tags = [dict(Key=key,Value=tags[key]) for key in tags.keys()]
-
-    for key in tags.keys():
-        lambda_tags.append({
-            "Key": key,
-            "Value": tags[key]
-        })
+    lambda_tags = [dict(Key=key, Value=tags[key]) for key in tags.keys()]
 
     neo4j_session.run(ingest_lambda_tags,
         Tags=lambda_tags,
