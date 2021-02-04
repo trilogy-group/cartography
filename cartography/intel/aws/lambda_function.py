@@ -66,6 +66,11 @@ def _get_lambda_function_query(lambda_version):
     lambda.description = {Description},
     lambda.timeout = {Timeout},
     lambda.memory = {MemorySize},
+    lambda.code_size = {CodeSize},
+    lambda.kms_key_arn = {KMSKeyArn},
+    lambda.dead_letter_config_target_arn = {DeadLetterConfigTargetArn},
+    lambda.signing_profile_version_arn = {SigningProfileVersionArn},
+    lambda.signing_job_arn = {SigningJobArn},
     lambda.lastupdated = {aws_update_tag}
 
     WITH lambda
@@ -113,8 +118,10 @@ def add_lambda_to_graph(neo4j_session, lambda_function, region,
     current_aws_account_id, aws_update_tag):
     ingest_lambda_functions = _get_lambda_function_query(lambda_function["Version"])
 
-    vpc_config = {} if not lambda_function.get("VpcConfig") else lambda_function.get("VpcConfig")
-    tracing_config = {} if not lambda_function.get("TracingConfig") else lambda_function.get("TracingConfig")
+    vpc_config = lambda_function.get("VpcConfig", {})
+    tracing_config = lambda_function.get("TracingConfig", {})
+    dead_letter_config = lambda_function.get("DeadLetterConfig", {})
+
     neo4j_session.run(
         ingest_lambda_functions,
         LambdaName=lambda_function["FunctionName"],
@@ -127,6 +134,13 @@ def add_lambda_to_graph(neo4j_session, lambda_function, region,
         Description=lambda_function["Description"],
         Timeout=lambda_function["Timeout"],
         MemorySize=lambda_function["MemorySize"],
+        CodeSize=lambda_function["CodeSize"],
+        # Add Relation to KMSKey, SigningProfile, etc once its support is added
+        # KMSKeyArn is only returned if it's Customer Managed
+        KMSKeyArn=lambda_function.get("KMSKeyArn"),
+        DeadLetterConfigTargetArn=dead_letter_config.get("TargetArn"),
+        SigningProfileVersionArn=lambda_function.get("SigningProfileVersionArn"),
+        SigningJobArn=lambda_function.get("SigningJobArn"),
         VpcId=vpc_config.get("VpcId"),
         SubnetIds=vpc_config.get("SubnetIds"),
         SecurityGroupIds=vpc_config.get("SecurityGroupIds"),
