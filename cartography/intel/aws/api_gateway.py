@@ -31,7 +31,7 @@ def get_rest_apis(boto3_session, region):
             stages = client.get_stages(restApiId=item['id'])['item']
             for stage in stages:
                 export_swagger_json = client.get_export(restApiId=item['id'], 
-                stageName=stage['stageName'], exportType='swagger', parameters={'extensions': 'integrations'})
+                stageName=stage['stageName'], exportType='swagger', parameters={'extensions': 'authorizers,integrations'})
                 export_swagger_json = json.loads(export_swagger_json['body'].read())
                 stage['export_swagger_json'] = export_swagger_json
                 stage['apigateway_integrations'] = get_apigateway_integration(export_swagger_json)
