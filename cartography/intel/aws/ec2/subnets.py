@@ -84,7 +84,7 @@ def load_subnets(neo4j_session, data, region, aws_account_id, aws_update_tag):
     snet.map_customer_owned_ip_on_launch = subnet.MapCustomerOwnedIpOnLaunch, snet.outpost_arn = subnet.OutpostArn,
     snet.map_public_ip_on_launch = subnet.MapPublicIpOnLaunch, snet.subnet_arn = subnet.SubnetArn, snet.vpc_id = subnet.VpcId,
     snet.availability_zone = subnet.AvailabilityZone, snet.availability_zone_id = subnet.AvailabilityZoneId,
-    snet.subnetid = subnet.SubnetId
+    snet.subnetid = subnet.SubnetId, snet.id = subnet.SubnetId, snet.region = {region}
     """
 
     ingest_subnet_vpc_relations = """
