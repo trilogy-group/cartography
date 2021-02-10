@@ -90,7 +90,7 @@ def load_elasticache_clusters(neo4j_session, cache_clusters, region, current_aws
             CacheSubnetGroupName=cluster['cache_subnet_group_name'],
             TransitEncryptionEnabled=cluster['transit_encryption_enabled'],
             AtRestEncryptionEnabled=cluster['at_rest_encryption_enabled'],
-            ConfigurationEndpoint=cluster.get('configuration_endpoint'),
+            ConfigurationEndpoint=str(cluster.get('configuration_endpoint')),
             Region=region,
             aws_update_tag=aws_update_tag,
             AWS_ACCOUNT_ID=current_aws_account_id
