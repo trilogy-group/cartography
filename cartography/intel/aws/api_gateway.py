@@ -1,5 +1,7 @@
 import logging
 import json
+import time
+import botocore
 
 from cartography.util import aws_handle_regions
 from cartography.util import run_cleanup_job
@@ -17,6 +19,24 @@ def get_apigateway_integration(export_swagger_json):
                 apigateway_integration.append(uri)
     return apigateway_integration
 
+def handle_too_many_requests(client_function, **kwargs):
+
+    WAITING_TIME = 0.1
+    for i in range(100):
+        try:
+            return client_function(**kwargs)
+        except botocore.exceptions.ClientError as err:
+            response = err.response
+            if (response and response.get("Error", {}).get("Code") == "TooManyRequestsException"):
+                time.sleep(WAITING_TIME)
+                WAITING_TIME += 0.01
+                continue
+        break
+        
+
+    return client_function(**kwargs)
+
+
 @timeit
 @aws_handle_regions
 def get_rest_apis(boto3_session, region):
@@ -28,9 +48,9 @@ def get_rest_apis(boto3_session, region):
     paginator = client.get_paginator("get_rest_apis")
     for page in paginator.paginate():
         for item in page['items']:
-            stages = client.get_stages(restApiId=item['id'])['item']
+            stages = handle_too_many_requests(client.get_stages, restApiId=item['id'])['item']
             for stage in stages:
-                export_swagger_json = client.get_export(restApiId=item['id'], 
+                export_swagger_json = handle_too_many_requests(client.get_export, restApiId=item['id'], 
                 stageName=stage['stageName'], exportType='swagger', parameters={'extensions': 'authorizers,integrations'})
                 export_swagger_json = json.loads(export_swagger_json['body'].read())
                 stage['export_swagger_json'] = export_swagger_json
